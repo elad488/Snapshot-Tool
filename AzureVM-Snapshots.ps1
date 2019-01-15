@@ -9,7 +9,7 @@
 #$subscriptionChoice = Read-Host "Enter Subscription Number: "
 #Select-AzureRmSubscription -SubscriptionId $subscriptions[$subscriptionChoice].Id
 
-function install-tool ($param1, $param2)
+function install-tool ()
 {
     $installedSA = az storage table list --account-name snapshottoolsa
     if ($installedSA){return}
@@ -73,6 +73,7 @@ function revertFromSnapshot ($snapshotName)
 
 function startMenu ()
 {
+    install-tool
     Write-Host "================ Azure Snapshot Tool ================"
     Write-Host "Please choose what would you like to do:"
     Write-Host "1. Take a snapshot"
