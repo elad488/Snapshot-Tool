@@ -1,5 +1,6 @@
 # Snapshot-Tool
-Azure snapshot tool that allow taking a disk snapshot and reverting to it in a matter of seconds
+Azure snapshot tool that allowד taking a disk snapshot and reverting to it in a matter of secondsץ
+Snapshots are point in time disk images created in seconds, the tool then utilizes them together with Azures disk swap API to quickly and easily restore the image to any point in time a snapshot was taken at in no more than a few seconds.
 
 # Installation
 In order to install the tool in your Azure Cloud Shell please follow these instructions:
