@@ -4,6 +4,8 @@ Snapshots are point in time disk images created in seconds, the tool then utiliz
 
 # Installation
 In order to install the tool in your Azure Cloud Shell please follow these instructions:
+- Download the AzureVM-Snapshots.ps1 script to your local hard disk.
+
 - open the cloud shell:
 
 ![alt text](https://raw.githubusercontent.com/elad488/Snapshot-Tool/master/pics/Azure-Cloud-Shell-Initiate.png)
