@@ -6,6 +6,7 @@ In order to install the tool in your Azure Cloud Shell please follow these instr
 - open the cloud shell:
 
 ![alt text](https://raw.githubusercontent.com/elad488/Snapshot-Tool/master/pics/Azure-Cloud-Shell-Initiate.png)
+
 -Upload the script from you local hard disk:
 
 ![alt text](https://raw.githubusercontent.com/elad488/Snapshot-Tool/master/pics/Azure-Cloud-Shell-File-Upload.png)
