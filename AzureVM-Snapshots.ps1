@@ -42,28 +42,42 @@ function takeSnapshot ()
     $diskName = "$vmName-snapshotdisk"
     $snapshotDisk = New-AzureRmDisk -Disk $diskConfig -ResourceGroupName $resourceGroup -DiskName $diskName
 
-    az storage entity insert --account-name snapshottoolsa -t snapshots -e PartitionKey=$snapshotName RowKey=$vmName disk_name=$diskName
+    az storage entity insert --account-name snapshottoolsa -t snapshots -e PartitionKey=$snapshotName RowKey=$vmName disk_name=$diskName resource_group=$resourceGroup
 }
 
-function revertFromSnapshot ($snapshotName)
+function revertFromSnapshot ($snapshotName, $vmName, $resourceGroup)
 {
-    # Get the VM 
-    $vm = Get-AzureRmVM -ResourceGroupName $resourceGroup -Name $vmName 
+    try
+    {
+         # Get the VM 
+        $vm = Get-AzureRmVM -ResourceGroupName $resourceGroup -Name $vmName 
 
-    # Make sure the VM is stopped\deallocated
-    Stop-AzureRmVM -ResourceGroupName $resourceGroup -Name $VM.Name -Force
+        # Make sure the VM is stopped\deallocated
+        Stop-AzureRmVM -ResourceGroupName $resourceGroup -Name $VM.Name -Force
 
-    # Get the new disk that you want to swap in
-    $disk = Get-AzureRmDisk -ResourceGroupName $resourceGroup -Name $diskName
+        # Get the new disk that you want to swap in
+        $disk = Get-AzureRmDisk -ResourceGroupName $resourceGroup -Name $diskName
 
-    # Set the VM configuration to point to the new disk  
-    Set-AzureRmVMOSDisk -VM $vm -ManagedDiskId $disk.Id -Name $disk.Name 
+        # Set the VM configuration to point to the new disk  
+        Set-AzureRmVMOSDisk -VM $vm -ManagedDiskId $disk.Id -Name $disk.Name 
 
-    # Update the VM with the new OS disk
-    Update-AzureRmVM -ResourceGroupName $resourceGroup -VM $VM 
+        # Update the VM with the new OS disk
+        Update-AzureRmVM -ResourceGroupName $resourceGroup -VM $VM 
 
-    # Start the VM
-    Start-AzureRmVM -Name $VM.Name -ResourceGroupName $resourceGroup
+        # Start the VM
+        Start-AzureRmVM -Name $VM.Name -ResourceGroupName $resourceGroup
+    }
+    catch
+    {
+        Write-Host $Error[0]
+    }
+    finally
+    {
+        Write-Host "Deleting snapshot record..."
+        az storage entity delete -t snapshots --account-name snapshottoolsa --partition-key $snapshotName --row-key $vmName
+        Write-Host "Snapshot deleted."
+    }
+  
 }
 
 
@@ -109,14 +123,19 @@ function listSnapshots ()
         $snapshotRow | Add-Member -MemberType NoteProperty -Name snapshotName -Value $null
         $snapshotRow | Add-Member -MemberType NoteProperty -Name vmName -Value $null
         $snapshotRow | Add-Member -MemberType NoteProperty -Name diskName -Value $null
+        $snapshotRow | Add-Member -MemberType NoteProperty -Name resourceGroup -Value $null
         $snapshotRow.snapshotName = $item.PartitionKey
         $snapshotRow.vmName = $item.RowKey
         $snapshotRow.diskName = $item.disk_name
+        $snapshotRow.resourceGroup = $item.resource_group
         $snapshotTable += $snapshotRow
     }
     $snapshotTable  | ft
     $choice = Read-Host "Enter the snapshot name to revert to: "
-    revertFromSnapshot($choice)
+    $vm = $snapshotTable | Where {$_.snapshotName -eq $choice}
+    $vmName = $vm.vmName
+    $resourceGroup = $vm.resourceGroup
+    revertFromSnapshot -snapshotName $choice -vmName $vmName -resourceGroup $resourceGroup
 }
 
 startMenu
