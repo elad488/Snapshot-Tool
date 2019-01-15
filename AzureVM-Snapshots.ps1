@@ -19,7 +19,6 @@ function install-tool ()
         $ctx = $storage.Context
 
         az storage table create -n snapshots --account-name snapshottoolsa
-        #New-AzureStorageTable –Name $tableName –Context $ctx
     }
 }
 
@@ -48,9 +47,6 @@ function takeSnapshot ()
 
 function revertFromSnapshot ($snapshotName)
 {
-    $vmName = "FE3"
-    $diskName = "FE3_OsDisk_1_c4c03f07008940da98fc7de9e72ec808"
-    $resourceGroup = "Elads-Resources"
     # Get the VM 
     $vm = Get-AzureRmVM -ResourceGroupName $resourceGroup -Name $vmName 
 
@@ -124,8 +120,6 @@ function listSnapshots ()
 }
 
 startMenu
-#takeSnapshot
-#revertFromSnapshot
 
 
 
