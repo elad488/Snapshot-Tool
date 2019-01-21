@@ -9,20 +9,21 @@
 #$subscriptionChoice = Read-Host "Enter Subscription Number: "
 #Select-AzureRmSubscription -SubscriptionId $subscriptions[$subscriptionChoice].Id
 
-function install-tool ()
+function install-tool ($storageName)
 {
-    $installedSA = az storage table list --account-name snapshottoolsa
-    if ($installedSA){return}
+    
+    $installedSA = az storage table list --account-name $storageName
+    if ($installedSA -ne $null){return}
     else{
-        New-AzureRmResourceGroup -Name "snapshotTool-RG" -Location "westeurope"
-        $storage = New-AzureRmStorageAccount -ResourceGroupName "snapshotTool-RG" -Name "snapshottoolsa" -SkuName Standard_LRS -Location 'West Europe'
+        New-AzureRmResourceGroup -Name "snapshotTool-RG" -Location "westeurope" -Force
+        $storage = New-AzureRmStorageAccount -ResourceGroupName "snapshotTool-RG" -Name "$storageName" -SkuName Standard_LRS -Location 'West Europe'
         $ctx = $storage.Context
 
-        az storage table create -n snapshots --account-name snapshottoolsa
+        az storage table create -n snapshots --account-name $storageName
     }
 }
 
-function takeSnapshot ()
+function takeSnapshot ($storageName)
 {
     
     $resourceGroup = Read-Host "Enter the RG name where the VM resides in: "
@@ -38,14 +39,14 @@ function takeSnapshot ()
     $snapshotName = "$vmName-snapshot"
     $snapshot = New-AzureRmSnapshot -Snapshot $snapshotConfig -SnapshotName $snapshotName -ResourceGroupName $resourceGroup
     
-    $diskConfig = New-AzureRmDiskConfig -AccountType $storageType -Location $location -CreateOption Copy -SourceResourceId $snapshot.Id
+    $diskConfig = New-AzureRmDiskConfig -SkuName $storageType -Location $location -CreateOption Copy -SourceResourceId $snapshot.Id
     $diskName = "$vmName-snapshotdisk"
     $snapshotDisk = New-AzureRmDisk -Disk $diskConfig -ResourceGroupName $resourceGroup -DiskName $diskName
 
-    az storage entity insert --account-name snapshottoolsa -t snapshots -e PartitionKey=$snapshotName RowKey=$vmName disk_name=$diskName resource_group=$resourceGroup
+    az storage entity insert --account-name $storageName -t snapshots -e PartitionKey=$snapshotName RowKey=$vmName disk_name=$diskName resource_group=$resourceGroup
 }
 
-function revertFromSnapshot ($snapshotName, $vmName, $resourceGroup)
+function revertFromSnapshot ($snapshotName, $vmName, $resourceGroup, $storageName)
 {
     try
     {
@@ -74,7 +75,7 @@ function revertFromSnapshot ($snapshotName, $vmName, $resourceGroup)
     finally
     {
         Write-Host "Deleting snapshot record..."
-        az storage entity delete -t snapshots --account-name snapshottoolsa --partition-key $snapshotName --row-key $vmName
+        az storage entity delete -t snapshots --account-name $storageName --partition-key $snapshotName --row-key $vmName
         Write-Host "Snapshot deleted."
     }
   
@@ -83,7 +84,18 @@ function revertFromSnapshot ($snapshotName, $vmName, $resourceGroup)
 
 function startMenu ()
 {
-    install-tool
+    $storageName = (Get-AzureRmContext).Subscription.Name
+    $storageName = $storageName.Replace(" ","")
+    $storageName = $storageName.Replace("'","")
+    $storageName = $storageName.Replace("-","")
+    $storageName = $storageName.ToLower()
+    if ($storageName.Length -ge 24) {
+        $trim = ($storageName.Length) - 22
+        $index = ($storageName.Length) - $trim
+        $storageName = $storageName.Substring(0,$index)
+    }
+    $storageName = $storageName + "st"
+    install-tool -storageName $storageName
     Write-Host "================ Azure Snapshot Tool ================"
     Write-Host "Please choose what would you like to do:"
     Write-Host "1. Take a snapshot"
@@ -94,25 +106,25 @@ function startMenu ()
     switch ($selection)
     {
         '1' {
-                takeSnapshot
+                takeSnapshot -storageName $storageName
             }
         '2' {
-                listSnapshots
+                listSnapshots -storageName $storageName
             }
         '3' {
                 Write-Host -ForegroundColor Red "Function not available yet"
             }
         '4' {
-                Write-Host -ForegroundColor Red "Function not available yet"
+                listSnapshots -storageName $storageName
             }
         #Default {Write-Host -ForegroundColor Red "Function not available yet"; return}
     }
     
 }
 
-function listSnapshots ()
+function listSnapshots ($storageName)
 {
-    $table = az storage entity query -t snapshots --account-name snapshottoolsa
+    $table = az storage entity query -t snapshots --account-name $storageName
     $table = $table | ConvertFrom-Json
     $i = 0
 
@@ -135,7 +147,7 @@ function listSnapshots ()
     $vm = $snapshotTable | Where {$_.snapshotName -eq $choice}
     $vmName = $vm.vmName
     $resourceGroup = $vm.resourceGroup
-    revertFromSnapshot -snapshotName $choice -vmName $vmName -resourceGroup $resourceGroup
+    revertFromSnapshot -snapshotName $choice -vmName $vmName -resourceGroup $resourceGroup -storageName $storageName
 }
 
 startMenu
