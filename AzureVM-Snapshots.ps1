@@ -32,6 +32,7 @@ function takeSnapshot ($storageName)
 
 
     $VM = Get-AzureRmVM -name $vmName -ResourceGroupName $resourceGroup
+    Start-AzureRmVM -Name $vmName -ResourceGroupName $resourceGroup -ErrorAction SilentlyContinue
     $storageType = $VM.StorageProfile.OsDisk.ManagedDisk.StorageAccountType
     $location = $vm.Location
 
@@ -46,12 +47,13 @@ function takeSnapshot ($storageName)
     az storage entity insert --account-name $storageName -t snapshots -e PartitionKey=$snapshotName RowKey=$vmName disk_name=$diskName resource_group=$resourceGroup
 }
 
-function revertFromSnapshot ($snapshotName, $vmName, $resourceGroup, $storageName)
+function revertFromSnapshot ($snapshotName, $vmName, $resourceGroup, $storageName, $diskName)
 {
     try
     {
          # Get the VM 
         $vm = Get-AzureRmVM -ResourceGroupName $resourceGroup -Name $vmName 
+        $oldDisk = $vm.StorageProfile.OsDisk.Name
 
         # Make sure the VM is stopped\deallocated
         Stop-AzureRmVM -ResourceGroupName $resourceGroup -Name $VM.Name -Force
@@ -75,6 +77,8 @@ function revertFromSnapshot ($snapshotName, $vmName, $resourceGroup, $storageNam
     finally
     {
         Write-Host "Deleting snapshot record..."
+        Remove-AzureRmDisk -ResourceGroupName $resourceGroup -DiskName $oldDisk -Force
+        Remove-AzureRmSnapshot -ResourceGroupName $resourceGroup -SnapshotName $snapshotName -Force
         az storage entity delete -t snapshots --account-name $storageName --partition-key $snapshotName --row-key $vmName
         Write-Host "Snapshot deleted."
     }
@@ -147,7 +151,8 @@ function listSnapshots ($storageName)
     $vm = $snapshotTable | Where {$_.snapshotName -eq $choice}
     $vmName = $vm.vmName
     $resourceGroup = $vm.resourceGroup
-    revertFromSnapshot -snapshotName $choice -vmName $vmName -resourceGroup $resourceGroup -storageName $storageName
+    $diskName = $vm.diskName
+    revertFromSnapshot -snapshotName $choice -vmName $vmName -resourceGroup $resourceGroup -storageName $storageName -diskName $diskName
 }
 
 startMenu
