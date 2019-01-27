@@ -37,7 +37,6 @@ function takeSnapshot ($storageName)
     $location = $vm.Location
 
     $snapshotConfig =  New-AzureRmSnapshotConfig -SourceUri $vm.StorageProfile.OsDisk.ManagedDisk.Id -Location $location -CreateOption copy
-    $snapshotName = "$vmName-snapshot"
     $snapshot = New-AzureRmSnapshot -Snapshot $snapshotConfig -SnapshotName $snapshotName -ResourceGroupName $resourceGroup
     
     $diskConfig = New-AzureRmDiskConfig -SkuName $storageType -Location $location -CreateOption Copy -SourceResourceId $snapshot.Id
