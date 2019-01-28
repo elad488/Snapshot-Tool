@@ -40,7 +40,7 @@ function takeSnapshot ($storageName)
     $snapshot = New-AzureRmSnapshot -Snapshot $snapshotConfig -SnapshotName $snapshotName -ResourceGroupName $resourceGroup
     
     $diskConfig = New-AzureRmDiskConfig -SkuName $storageType -Location $location -CreateOption Copy -SourceResourceId $snapshot.Id
-    $diskName = "$vmName-snapshotdisk"
+    $diskName = "$vmName-$snapshotName"
     $snapshotDisk = New-AzureRmDisk -Disk $diskConfig -ResourceGroupName $resourceGroup -DiskName $diskName
 
     az storage entity insert --account-name $storageName -t snapshots -e PartitionKey=$snapshotName RowKey=$vmName disk_name=$diskName resource_group=$resourceGroup
