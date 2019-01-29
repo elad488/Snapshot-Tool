@@ -23,13 +23,11 @@ function install-tool ($storageName)
     }
 }
 
-function takeSnapshot ($storageName)
+function takeSnapshot ($storageName, $snapshotName)
 {
     
     $resourceGroup = Read-Host "Enter the RG name where the VM resides in: "
     $vmName = Read-Host "Enter the VM name to snapshot: "
-    $snapshotName = Read-Host "Enter a snapshot name: "
-
 
     $VM = Get-AzureRmVM -name $vmName -ResourceGroupName $resourceGroup
     Start-AzureRmVM -Name $vmName -ResourceGroupName $resourceGroup -ErrorAction SilentlyContinue
@@ -109,7 +107,8 @@ function startMenu ()
     switch ($selection)
     {
         '1' {
-                takeSnapshot -storageName $storageName
+                $snapshotName = nameValidation
+                takeSnapshot -storageName $storageName -snapshotName $snapshotName
             }
         '2' {
                 listSnapshots -storageName $storageName
@@ -154,8 +153,21 @@ function listSnapshots ($storageName)
     revertFromSnapshot -snapshotName $choice -vmName $vmName -resourceGroup $resourceGroup -storageName $storageName -diskName $diskName
 }
 
+function nameValidation ()
+{
+    $table = az storage entity query -t snapshots --account-name eladhascalsinternalconst
+    $table = $table | ConvertFrom-Json
+    $names = ($table.items).PartitionKey
+    $flag = "true"
+    $snapshotName = Read-Host "Enter a snapshot name: "
+    foreach ($name in $names){
+        if ($snapshotName -eq $name){
+            Write-Host "The name $snapshotName already exist please try another name"
+            $flag = "false"
+        }
+    }
+    if ($flag -eq "false"){nameValidation}
+    else {return $snapshotName}
+}
+
 startMenu
-
-
-
-
