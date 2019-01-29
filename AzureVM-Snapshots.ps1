@@ -107,7 +107,7 @@ function startMenu ()
     switch ($selection)
     {
         '1' {
-                $snapshotName = nameValidation
+                $snapshotName = nameValidation -storageName $storageName
                 takeSnapshot -storageName $storageName -snapshotName $snapshotName
             }
         '2' {
@@ -153,9 +153,9 @@ function listSnapshots ($storageName)
     revertFromSnapshot -snapshotName $choice -vmName $vmName -resourceGroup $resourceGroup -storageName $storageName -diskName $diskName
 }
 
-function nameValidation ()
+function nameValidation ($storageName)
 {
-    $table = az storage entity query -t snapshots --account-name eladhascalsinternalconst
+    $table = az storage entity query -t snapshots --account-name $storageName
     $table = $table | ConvertFrom-Json
     $names = ($table.items).PartitionKey
     $flag = "true"
